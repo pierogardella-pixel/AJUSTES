@@ -54,6 +54,22 @@
 .storeChartBox{height:310px;min-height:310px}
 @media(max-width:720px){.storeLocalFilters{grid-template-columns:1fr}.storeChartScroll{max-height:420px}}
 
+
+.alertRecoGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.alertRecoPanel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px 14px;box-shadow:var(--shadow2)}
+.alertRecoHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.alertRecoHead h3{margin:0;font-size:12px;color:var(--ink);font-weight:1000}
+.alertRecoHead span{font-size:9px;font-weight:900;border-radius:999px;padding:4px 7px;background:#f3f5fb;color:var(--navy)}
+.alertList,.recoList{display:grid;gap:8px}
+.alertItem,.recoItem{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:flex-start;border-radius:12px;padding:9px 10px;border:1px solid #edf0f5;background:#fbfcfe}
+.alertIcon,.recoIcon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:1000}
+.alertItem.critical .alertIcon{background:#fdecef;color:#b32632}.alertItem.warning .alertIcon{background:#fff4df;color:#a56400}.alertItem.info .alertIcon{background:#eef1ff;color:#2438c7}
+.recoIcon{background:#eaf7f1;color:#147a4e}
+.alertText b,.recoText b{display:block;font-size:10px;color:var(--ink);margin-bottom:2px}
+.alertText span,.recoText span{display:block;font-size:9px;line-height:1.35;color:var(--muted)}
+.alertEmpty{font-size:10px;color:var(--muted);padding:8px 2px}
+@media(max-width:900px){.alertRecoGrid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -132,6 +148,16 @@
     <div class="insightFeature"><span class="insightMark lossMark">02</span><div><span class="iLabel">Producto con mayor OUT</span><div class="iValue" id="iOutProduct">—</div></div></div>
     <div class="insightFeature"><span class="insightMark gainMark">03</span><div><span class="iLabel">Mayor recuperación / IN</span><div class="iValue" id="iInProduct">—</div></div></div>
     <div class="insightFeature"><span class="insightMark">04</span><div><span class="iLabel">Concentración Top 5 OUT</span><div class="iValue" id="iTop5">—</div></div></div>
+  </section>
+  <section class="alertRecoGrid">
+    <div class="alertRecoPanel">
+      <div class="alertRecoHead"><h3>Alertas automáticas</h3><span id="alertCountBadge">0 alertas</span></div>
+      <div class="alertList" id="alertList"><div class="alertEmpty">Sin alertas relevantes con el filtro actual.</div></div>
+    </div>
+    <div class="alertRecoPanel">
+      <div class="alertRecoHead"><h3>Recomendaciones</h3><span>Acciones sugeridas</span></div>
+      <div class="recoList" id="recoList"><div class="alertEmpty">Carga o filtra datos para generar recomendaciones.</div></div>
+    </div>
   </section>
   <section class="grid">
     <div class="card"><div class="card-head"><div><h3>Balance financiero IN / OUT / Neto</h3><div class="hint">OUT se muestra negativo para visualizar claramente la pérdida de valor.</div></div><span class="tag orange">Saldo</span></div><div class="chartbox"><canvas id="chartBalance"></canvas></div></div>
@@ -218,7 +244,7 @@ function populateFilters(){fillSelect('centroFilter',unique('centro'),'Todos');f
 function isRejected(s){return norm(s).toLowerCase().includes('rechaz')}
 function isEffective(s){const x=norm(s).toLowerCase();return x.includes('proces')||x.includes('aprob')||x.includes('complet')||x.includes('confirm')}
 function isMoneyRow(r){return r.precio>0&&r.importe>0}
-function applyFilters(){const q=norm(el('searchInput').value).toLowerCase(),centro=el('centroFilter').value,estado=el('estadoFilter').value,logica=el('logicaFilter').value,tipo=el('tipoFilter').value;const from=el('dateFrom').value?new Date(el('dateFrom').value+'T00:00:00'):null,to=el('dateTo').value?new Date(el('dateTo').value+'T23:59:59'):null;filteredRows=allRows.filter(r=>{const hay=[r.codigo,r.producto,r.documento,r.creadoPor,r.tipo,r.descripcion,r.centro].join(' ').toLowerCase();return(!q||hay.includes(q))&&(!centro||r.centro===centro)&&(!estado||r.estado===estado)&&(!logica||r.logica===logica)&&(!tipo||r.tipo===tipo)&&(!from||!r.fecha||r.fecha>=from)&&(!to||!r.fecha||r.fecha<=to)});el('visibleRows').textContent=intFmt.format(filteredRows.length);el('visibleMoneyRows').textContent=intFmt.format(filteredRows.filter(isMoneyRow).length);updateKpis();updateInsights();updateCharts();updateTable()}
+function applyFilters(){const q=norm(el('searchInput').value).toLowerCase(),centro=el('centroFilter').value,estado=el('estadoFilter').value,logica=el('logicaFilter').value,tipo=el('tipoFilter').value;const from=el('dateFrom').value?new Date(el('dateFrom').value+'T00:00:00'):null,to=el('dateTo').value?new Date(el('dateTo').value+'T23:59:59'):null;filteredRows=allRows.filter(r=>{const hay=[r.codigo,r.producto,r.documento,r.creadoPor,r.tipo,r.descripcion,r.centro].join(' ').toLowerCase();return(!q||hay.includes(q))&&(!centro||r.centro===centro)&&(!estado||r.estado===estado)&&(!logica||r.logica===logica)&&(!tipo||r.tipo===tipo)&&(!from||!r.fecha||r.fecha>=from)&&(!to||!r.fecha||r.fecha<=to)});el('visibleRows').textContent=intFmt.format(filteredRows.length);el('visibleMoneyRows').textContent=intFmt.format(filteredRows.filter(isMoneyRow).length);updateKpis();updateInsights();updateAlertsRecommendations();updateCharts();updateTable()}
 function sum(rows,fn){return rows.reduce((a,r)=>a+fn(r),0)}
 function group(rows,keyFn,valFn=()=>1){const m=new Map();for(const r of rows){const k=keyFn(r)||'Sin dato';m.set(k,(m.get(k)||0)+valFn(r))}return[...m.entries()]}
 function groupLogicBy(rows,keyFn){const m=new Map();for(const r of rows){const k=keyFn(r)||'Sin dato';if(!m.has(k))m.set(k,{IN:0,OUT:0,count:0});const x=m.get(k);if(r.logica==='IN')x.IN+=r.importe;if(r.logica==='OUT')x.OUT+=r.importe;x.count++}return[...m.entries()].map(([key,v])=>({key,...v,gross:v.IN+v.OUT,net:v.IN-v.OUT}))}
@@ -227,6 +253,64 @@ function compactMoney(v){const n=Math.abs(Number(v)||0);const sign=Number(v)<0?'
 function signedMoney(v){return v<0?'-'+money.format(Math.abs(v)):money.format(v)}
 function updateKpis(){const moneyRows=filteredRows.filter(isMoneyRow),inRows=moneyRows.filter(r=>r.logica==='IN'),outRows=moneyRows.filter(r=>r.logica==='OUT'),proc=moneyRows.filter(r=>isEffective(r.estado)),rej=moneyRows.filter(r=>isRejected(r.estado));const inV=sum(inRows,r=>r.importe),outV=sum(outRows,r=>r.importe),net=inV-outV,gross=inV+outV,procV=sum(proc,r=>r.importe),rejV=sum(rej,r=>r.importe),procIn=sum(proc.filter(r=>r.logica==='IN'),r=>r.importe),procOut=sum(proc.filter(r=>r.logica==='OUT'),r=>r.importe),zero=filteredRows.length-moneyRows.length;el('kIn').textContent=money.format(inV);el('kOut').textContent=money.format(outV);el('kNet').textContent=signedMoney(net);el('kGross').textContent=money.format(gross);el('kProcessed').textContent=money.format(procV);el('kRejected').textContent=money.format(rejV);el('kOutShare').textContent=`${pct(outV,gross).toFixed(1)}%`;el('kZero').textContent=intFmt.format(zero);el('kProcessedSub').textContent=`${intFmt.format(proc.length)} registros efectivos`;el('kRejectedSub').textContent=`${intFmt.format(rej.length)} registros rechazados`;el('kNetSub').textContent=net>=0?'Balance valorizado a favor':'Balance valorizado en contra';const card=el('kNetCard');card.classList.toggle('netPositive',net>=0);card.classList.toggle('netNegative',net<0);el('qProcNet').textContent=signedMoney(procIn-procOut);el('qAvgIn').textContent=money.format(inRows.length?inV/inRows.length:0);el('qAvgOut').textContent=money.format(outRows.length?outV/outRows.length:0);el('qMaxOut').textContent=money.format(outRows.length?Math.max(...outRows.map(r=>r.importe)):0);el('qDocs').textContent=intFmt.format(new Set(moneyRows.map(r=>r.documento).filter(Boolean)).size);el('qSku').textContent=intFmt.format(new Set(moneyRows.map(r=>r.codigo).filter(Boolean)).size);el('qDays').textContent=intFmt.format(new Set(moneyRows.filter(r=>r.fecha).map(r=>dateKey(r.fecha))).size);el('qQuality').textContent=`${pct(moneyRows.length,filteredRows.length).toFixed(1)}%`;if(el('chartGain'))el('chartGain').textContent=money.format(inV);if(el('chartLoss'))el('chartLoss').textContent=money.format(outV);if(el('chartNet'))el('chartNet').textContent=signedMoney(net);const cn=el('chartNetCard');if(cn){cn.classList.toggle('positive',net>=0);cn.classList.toggle('negative',net<0)}}
 function updateInsights(){const moneyRows=filteredRows.filter(isMoneyRow),out=moneyRows.filter(r=>r.logica==='OUT'),ins=moneyRows.filter(r=>r.logica==='IN');const causes=group(out,r=>r.tipo,r=>r.importe).sort((a,b)=>b[1]-a[1]);const outProd=group(out,r=>`${r.codigo} · ${r.producto||'Sin nombre'}`,r=>r.importe).sort((a,b)=>b[1]-a[1]);const inProd=group(ins,r=>`${r.codigo} · ${r.producto||'Sin nombre'}`,r=>r.importe).sort((a,b)=>b[1]-a[1]);const outTotal=sum(out,r=>r.importe),top5=outProd.slice(0,5).reduce((a,x)=>a+x[1],0);el('iOutCause').innerHTML=causes[0]?`<strong>${escapeHtml(causes[0][0])}</strong><br>${money.format(causes[0][1])} · ${pct(causes[0][1],outTotal).toFixed(1)}% del OUT`:'—';el('iOutProduct').innerHTML=outProd[0]?`<strong>${escapeHtml(truncate(outProd[0][0],46))}</strong><br>${money.format(outProd[0][1])}`:'—';el('iInProduct').innerHTML=inProd[0]?`<strong>${escapeHtml(truncate(inProd[0][0],46))}</strong><br>${money.format(inProd[0][1])}`:'—';el('iTop5').innerHTML=outTotal?`<strong>${pct(top5,outTotal).toFixed(1)}%</strong><br>${money.format(top5)} de ${money.format(outTotal)}`:'—'}
+
+function updateAlertsRecommendations(){
+  const alertBox=el('alertList'),recoBox=el('recoList'),badge=el('alertCountBadge');
+  if(!alertBox||!recoBox||!badge)return;
+  const moneyRows=filteredRows.filter(isMoneyRow),ins=moneyRows.filter(r=>r.logica==='IN'),outs=moneyRows.filter(r=>r.logica==='OUT');
+  const inV=sum(ins,r=>r.importe),outV=sum(outs,r=>r.importe),net=inV-outV,gross=inV+outV;
+  const zeroCount=filteredRows.length-moneyRows.length;
+  const rejected=filteredRows.filter(r=>isRejected(r.estado));
+  const outProd=group(outs,r=>`${r.codigo||'Sin SKU'} · ${r.producto||'Sin nombre'}`,r=>r.importe).sort((a,b)=>b[1]-a[1]);
+  const top5Val=outProd.slice(0,5).reduce((a,x)=>a+x[1],0),top5Pct=pct(top5Val,outV);
+  const outStores=group(outs,r=>r.tienda||r.centro||'Sin tienda',r=>r.importe).sort((a,b)=>b[1]-a[1]);
+  const topStore=outStores[0],topStorePct=topStore?pct(topStore[1],outV):0;
+  const repeatMap=new Map();
+  for(const r of filteredRows){
+    const k=[r.tienda||r.centro||'Sin tienda',r.codigo||r.producto||'Sin producto',r.logica||''].join('¦');
+    repeatMap.set(k,(repeatMap.get(k)||0)+1);
+  }
+  const repeatMax=[...repeatMap.entries()].sort((a,b)=>b[1]-a[1])[0];
+  const alerts=[],recos=[];
+  const addAlert=(level,title,text)=>alerts.push({level,title,text});
+  const addReco=(title,text)=>recos.push({title,text});
+  if(net<0){
+    addAlert('critical','Saldo neto negativo',`El OUT supera al IN en ${money.format(Math.abs(net))}.`);
+    addReco('Revisar el origen de las pérdidas','Prioriza los productos, tiendas y causas con mayor OUT antes de cerrar el periodo.');
+  } else if(gross>0 && pct(outV,gross)>=45){
+    addAlert('warning','OUT con participación elevada',`El OUT representa ${pct(outV,gross).toFixed(1)}% del impacto bruto.`);
+    addReco('Controlar la tendencia del OUT','Compara las causas y tiendas con mayor salida para evitar que el saldo pase a negativo.');
+  }
+  if(outV>0 && top5Pct>=70){
+    addAlert('warning','Pérdidas muy concentradas',`Los 5 principales productos concentran ${top5Pct.toFixed(1)}% del OUT.`);
+    addReco('Atacar el Top 5 de productos','Investiga primero los SKU con mayor OUT; una corrección ahí tendrá el mayor impacto.');
+  }
+  if(topStore && topStorePct>=35){
+    addAlert('warning','Tienda con alta concentración de OUT',`${topStore[0]} concentra ${topStorePct.toFixed(1)}% del OUT (${money.format(topStore[1])}).`);
+    addReco('Auditar la tienda con mayor OUT',`Revisa los ajustes recurrentes y documentos de ${topStore[0]} para identificar la causa principal.`);
+  }
+  if(rejected.length){
+    addAlert('info','Ajustes rechazados detectados',`Hay ${intFmt.format(rejected.length)} registro${rejected.length===1?'':'s'} rechazado${rejected.length===1?'':'s'} en el filtro actual.`);
+    addReco('Depurar ajustes rechazados','Verifica si requieren corrección, reproceso o cierre para evitar acumulación de pendientes.');
+  }
+  if(zeroCount>0){
+    addAlert(zeroCount>Math.max(5,filteredRows.length*.1)?'warning':'info','Registros sin valorización',`${intFmt.format(zeroCount)} registro${zeroCount===1?'':'s'} tienen precio o importe en cero.`);
+    addReco('Completar la valorización','Revisa precios e importes en cero para que los indicadores financieros reflejen todo el impacto.');
+  }
+  if(repeatMax && repeatMax[1]>=3){
+    const [store,prod,logic]=repeatMax[0].split('¦');
+    addAlert('info','Ajustes repetidos',`${store} registra ${repeatMax[1]} ajustes ${logic||''} del mismo producto (${prod}).`);
+    addReco('Revisar recurrencia','Valida si los ajustes repetidos corresponden a una causa operativa recurrente o a correcciones sucesivas.');
+  }
+  if(!alerts.length && filteredRows.length){
+    addAlert('info','Sin alertas críticas','No se detectaron condiciones de riesgo relevantes con los filtros actuales.');
+    addReco('Mantener seguimiento','Continúa revisando OUT, rechazos, recurrencia y valorización por tienda y producto.');
+  }
+  badge.textContent=`${alerts.length} alerta${alerts.length===1?'':'s'}`;
+  alertBox.innerHTML=alerts.map((a,i)=>`<div class="alertItem ${a.level}"><div class="alertIcon">${a.level==='critical'?'!':a.level==='warning'?'▲':'i'}</div><div class="alertText"><b>${escapeHtml(a.title)}</b><span>${escapeHtml(a.text)}</span></div></div>`).join('')||'<div class="alertEmpty">Sin alertas relevantes con el filtro actual.</div>';
+  const uniqueRecos=[];const seen=new Set();for(const r of recos){if(!seen.has(r.title)){seen.add(r.title);uniqueRecos.push(r)}}
+  recoBox.innerHTML=uniqueRecos.slice(0,6).map((r,i)=>`<div class="recoItem"><div class="recoIcon">${i+1}</div><div class="recoText"><b>${escapeHtml(r.title)}</b><span>${escapeHtml(r.text)}</span></div></div>`).join('')||'<div class="alertEmpty">Sin recomendaciones adicionales.</div>';
+}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 function mkChart(id,config){
   const canvas=el(id);if(!canvas)return;destroyChart(id);
